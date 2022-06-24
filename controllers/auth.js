@@ -1,6 +1,7 @@
 const { request, response } = require("express");
 const User = require("../models/User");
 const bcrypt = require('bcryptjs');
+const { generateToken } = require("../helpers/jwt");
 
 const newUser = async( req = request, res = response )=> {
     const { name, email, password } = req.body;
@@ -23,6 +24,7 @@ const newUser = async( req = request, res = response )=> {
 
 
         // generate JWT
+        const token = await generateToken( dbUser.id, dbUser.name );
         
         // create user in db
         await dbUser.save();
@@ -32,6 +34,7 @@ const newUser = async( req = request, res = response )=> {
             ok: true,
             uid: dbUser.id,
             name,
+            token
         })
         
     } catch (error) {
@@ -48,25 +51,34 @@ const login = async( req = request, res = response )=> {
     const { email, password } = req.body;
 
     try {
-        // validate email doesnt exist
-        let user = await User.findOne({ email });
-        if( user ){
+       
+        const dbUser = await User.findOne({ email });
+        if( !dbUser ){
             return res.status(400).json({
                 ok: false,
-                msg: 'User already exist'
+                msg: 'Email or password incorrects'
             })
         }
-        // create user with model
-        user = new User( req.body );
 
-        // hash password
-    
-        // generate JWT
-    
-        // create user in db
+        // confir password do match
+        const validPassword = bcrypt.compareSync( password, dbUser.password );
 
-    
-        // generate response
+        if( !validPassword ){
+            return res.status(400).json({
+                ok: false,
+                msg: 'email or Password incorrects'
+            })
+        }
+
+        // generate jwt
+        const token = await generateToken( dbUser.id, dbUser.name );
+
+        return res.json({
+            ok: true,
+            uid: dbUser.id,
+            name: dbUser.name,
+            token
+        })
         
     } catch (error) {
         console.log(error)
@@ -79,8 +91,26 @@ const login = async( req = request, res = response )=> {
     
 }
 
-const getToken = ( req = request, res = response )=> {
-    return res.json({ ok: true, msg: 'renew'});
+const getToken = async( req = request, res = response )=> {
+    try {
+        const { uid, name  } = req;
+
+        const token = await generateToken( uid, name );
+
+        return res.json({
+            ok: true,
+            uid,
+            name,
+            token
+        })
+        
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({ 
+            ok: false, 
+            msg: 'please talk with the administrator'
+        });
+    }
 }
 
 
