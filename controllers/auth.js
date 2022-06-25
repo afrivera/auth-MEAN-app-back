@@ -34,6 +34,7 @@ const newUser = async( req = request, res = response )=> {
             ok: true,
             uid: dbUser.id,
             name,
+            email,
             token
         })
         
@@ -77,6 +78,7 @@ const login = async( req = request, res = response )=> {
             ok: true,
             uid: dbUser.id,
             name: dbUser.name,
+            email: dbUser.email,
             token
         })
         
@@ -93,14 +95,17 @@ const login = async( req = request, res = response )=> {
 
 const getToken = async( req = request, res = response )=> {
     try {
-        const { uid, name  } = req;
+        const { uid } = req;
 
-        const token = await generateToken( uid, name );
+        const user = await User.findById( uid );
+
+        const token = await generateToken( uid, user.name );
 
         return res.json({
             ok: true,
             uid,
-            name,
+            name: user.name,
+            email: user.email,
             token
         })
         
